@@ -44,14 +44,13 @@ trait QueryBuilder
             $queryString['fields'] = [];
             foreach ($fields as $field => $boostLevel) {
                 if ($boostLevel > 1) {
-                    $field = $field.'^'.$boostLevel;
+                    $field = $field . '^' . $boostLevel;
                 }
                 $queryString['fields'][] = $field;
             }
             if (count($queryString['fields']) > 1) {
                 $queryString['type'] = 'cross_fields';
             }
-
         }
         if (! empty($searchOptions['highlight'])) {
             $params['body']['highlight'] = $searchOptions['highlight'];
@@ -162,9 +161,9 @@ trait QueryBuilder
                 $terms['terms']['order'][] = ['_key' => 'desc'];
             }
         }
-        $aggs['by_'.$columns[0]] = $terms;
+        $aggs['by_' . $columns[0]] = $terms;
         if (count($columns) > 1) {
-            $aggs['by_'.$columns[0]]['aggs'] = $this->createNestedAggs(array_slice($columns, 1), $sort);
+            $aggs['by_' . $columns[0]]['aggs'] = $this->createNestedAggs(array_slice($columns, 1), $sort);
         }
 
         return $aggs;
@@ -275,13 +274,17 @@ trait QueryBuilder
     {
         $field = key($condition);
         if ($parentField) {
-            if (! str_starts_with($field, $parentField.'.')) {
-                $field = $parentField.'.'.$field;
+            if (! str_starts_with($field, $parentField . '.')) {
+                $field = $parentField . '.' . $field;
             }
         }
 
         if ($field == 'multi_match') {
             return $this->_buildMultiMatch($condition['multi_match']);
+        }
+
+        if ($field == 'query_string') {
+            return $this->_buildQueryString($condition['query_string']);
         }
 
         $value = current($condition);
@@ -313,14 +316,14 @@ trait QueryBuilder
                 case 'like':
                     $queryPart = [
                         'query_string' => [
-                            'query' => $field.':*'.$this->_escape($operand).'*',
+                            'query' => $field . ':*' . $this->_escape($operand) . '*',
                         ],
                     ];
                     break;
                 case 'not_like':
                     $queryPart = [
                         'query_string' => [
-                            'query' => '(NOT '.$field.':*'.self::_escape($operand).'*)',
+                            'query' => '(NOT ' . $field . ':*' . self::_escape($operand) . '*)',
                         ],
                     ];
                     break;
@@ -381,7 +384,7 @@ trait QueryBuilder
                     } else {
                         $keywordField = $this->parseRequiredKeywordMapping($field);
                         if (! $keywordField) {
-                            throw new ParameterException('Field ['.$field.'] is not a keyword field which is required for the [exact] operator.');
+                            throw new ParameterException('Field [' . $field . '] is not a keyword field which is required for the [exact] operator.');
                         }
                     }
 
@@ -435,7 +438,7 @@ trait QueryBuilder
 
                     break;
                 default:
-                    abort(400, 'Invalid operator ['.$operator.'] provided for condition.');
+                    abort(400, 'Invalid operator [' . $operator . '] provided for condition.');
             }
 
             return $queryPart;
@@ -457,6 +460,25 @@ trait QueryBuilder
 
         return $query;
     }
+
+    private function _buildQueryString($payload): array
+    {
+        // dd($payload);
+        $query = [
+            'query_string' => [
+                'query' => $payload['query'],
+                'fields' => $payload['fields'],
+            ],
+        ];
+
+
+        if (! empty($payload['options'])) {
+            $query['query_string'] = array_merge($query['query_string'], $payload['options']);
+        }
+
+        return $query;
+    }
+
 
     /**
      * @throws ParameterException
@@ -517,7 +539,7 @@ trait QueryBuilder
                         //Pass through
                         break;
                     default:
-                        throw new ParameterException('Unexpected option: '.$key);
+                        throw new ParameterException('Unexpected option: ' . $key);
                 }
             }
         }
@@ -541,8 +563,8 @@ trait QueryBuilder
             $sorts = [];
             foreach ($options['sort'] as $sort) {
                 foreach ($sort as $sortField => $sortPayload) {
-                    if (! str_starts_with($sortField, $field.'.')) {
-                        $sortField = $field.'.'.$sortField;
+                    if (! str_starts_with($sortField, $field . '.')) {
+                        $sortField = $field . '.' . $sortField;
                     }
                     $sorts[] = [$sortField => $sortPayload];
                 }
@@ -594,7 +616,6 @@ trait QueryBuilder
         $params['body']['query'] = $filteredBody['query'];
 
         return $params;
-
     }
 
     public function _parseFunctionScore($params, $function)

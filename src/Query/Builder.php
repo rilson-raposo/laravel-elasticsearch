@@ -409,7 +409,7 @@ class Builder extends BaseBuilder
         $aggregateTypes = ['sum', 'avg', 'min', 'max', 'matrix', 'count'];
         foreach ($functions as $function) {
             if (! in_array($function, $aggregateTypes)) {
-                throw new RuntimeException('Invalid aggregate type: '.$function);
+                throw new RuntimeException('Invalid aggregate type: ' . $function);
             }
         }
         $wheres = $this->compileWheres();
@@ -463,7 +463,7 @@ class Builder extends BaseBuilder
 
             return $collection;
         } else {
-            throw new RuntimeException('Error: '.$search->errorMessage);
+            throw new RuntimeException('Error: ' . $search->errorMessage);
         }
     }
 
@@ -747,6 +747,22 @@ class Builder extends BaseBuilder
 
         return $this;
     }
+    public function searchQueryString($term, $fields = ['*'], $options = [], $boolean = 'and'): static
+    {
+        $this->_ensureValueAsArray($fields);
+        $this->wheres[] = [
+            'column' => '*',
+            'type' => 'QueryString',
+            'value' => $term,
+            'operator' => 'query_string',
+            'boolean' => $boolean,
+            'fields' => $fields,
+            'options' => $options,
+        ];
+        return $this;
+    }
+
+
 
     // Ors ----------------------------------------------------------------
 
@@ -1067,17 +1083,17 @@ class Builder extends BaseBuilder
             };
         }
         $nextTerm = match ($type) {
-            'fuzzy' => '('.self::_escape($term).'~)',
-            'regex' => '(/'.$term.'/)',
-            'phrase' => '("'.self::_escape($term).'")',
-            default => '('.self::_escape($term).')',
+            'fuzzy' => '(' . self::_escape($term) . '~)',
+            'regex' => '(/' . $term . '/)',
+            'phrase' => '("' . self::_escape($term) . '")',
+            default => '(' . self::_escape($term) . ')',
         };
 
         if ($boostFactor) {
-            $nextTerm .= '^'.$boostFactor;
+            $nextTerm .= '^' . $boostFactor;
         }
         if ($clause) {
-            $this->searchQuery = $this->searchQuery.' '.strtoupper($clause).' '.$nextTerm;
+            $this->searchQuery = $this->searchQuery . ' ' . strtoupper($clause) . ' ' . $nextTerm;
         } else {
             $this->searchQuery = $nextTerm;
         }
@@ -1326,7 +1342,7 @@ class Builder extends BaseBuilder
 
             return $collection;
         } else {
-            throw new RuntimeException('Error: '.$find->errorMessage);
+            throw new RuntimeException('Error: ' . $find->errorMessage);
         }
     }
 
@@ -1369,7 +1385,7 @@ class Builder extends BaseBuilder
                 throw new RuntimeException('Cannot start a query with an OR statement');
             }
             if (count($wheres) == 1) {
-                return $this->{'_parseWhere'.$wheres[0]['type']}($wheres[0]);
+                return $this->{'_parseWhere' . $wheres[0]['type']}($wheres[0]);
             }
             $and = [];
             $or = [];
@@ -1380,7 +1396,7 @@ class Builder extends BaseBuilder
                     $and = [];
                 }
 
-                $result = $this->{'_parseWhere'.$where['type']}($where);
+                $result = $this->{'_parseWhere' . $where['type']}($where);
                 $and[] = $result;
             }
             if ($or) {
@@ -1518,7 +1534,6 @@ class Builder extends BaseBuilder
             'type' => $operator,
             'options' => $options,
         ]];
-
     }
 
     protected function _parseWhereNotNull(array $where): array
@@ -1541,7 +1556,7 @@ class Builder extends BaseBuilder
             'and' => 'must',
             'not', 'or not' => 'must_not',
             'or' => 'should',
-            default => throw new RuntimeException($boolean.' is not supported for parameter grouping'),
+            default => throw new RuntimeException($boolean . ' is not supported for parameter grouping'),
         };
 
         $query = $where['query'];
@@ -1652,6 +1667,18 @@ class Builder extends BaseBuilder
         ];
     }
 
+    protected function _parseWhereQueryString(array $where): array
+    {
+        // $operator = $where['operator'];
+        $value = $where['value'];
+        // $options = $where['options'] ?? [];
+        $fields = $where['fields'] ?? [];
+        return ['query_string' => [
+            'query' => $value,
+            'fields' => $fields
+        ]];
+    }
+
     protected function _processInsert(array $values, bool $returnData, bool $saveWithoutRefresh): ElasticCollection
     {
         $response = [
@@ -1697,7 +1724,6 @@ class Builder extends BaseBuilder
         });
 
         return $this->_parseBulkInsertResult($response, $returnData);
-
     }
 
     protected function _parseBulkInsertResult($response, $returnData): ElasticCollection
